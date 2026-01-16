@@ -1,0 +1,34 @@
+# Go build artifacts
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+*.a
+*.o
+*.log
+
+# Go workspace
+/bin/
+/pkg/
+
+# Go module cache (if committed locally)
+/vendor/
+
+# IDE/editor
+*.swp
+*.swo
+*.idea/
+.vscode/
+
+# OS files
+.DS_Store
+
+# Vercel
+.vercel/
+
+# Env files
+.env
+.env.*
