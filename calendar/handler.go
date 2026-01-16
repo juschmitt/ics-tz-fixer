@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/juschmitt/ics-tz-fixer/api/ics"
+	"github.com/juschmitt/ics-tz-fixer/ics"
 )
 
 var allowedHosts = map[string]struct{}{
