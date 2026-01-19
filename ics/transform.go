@@ -46,6 +46,7 @@ func transformStream(reader io.Reader, writer io.Writer, tzHint string) error {
 	scanner.Buffer(make([]byte, 0, 1024), 1024*1024)
 
 	signatureMapping := knownSignatureMapping()
+	tzidMapping := knownTZIDMapping()
 	mapping := map[string]string{}
 
 	var (
@@ -90,7 +91,7 @@ func transformStream(reader io.Reader, writer io.Writer, tzHint string) error {
 				return nil
 			case "END:VTIMEZONE":
 				if currentTZID != "" {
-					applyMapping(mapping, signatureMapping, currentTZID, currentRule, tzHint)
+					applyMapping(mapping, signatureMapping, tzidMapping, currentTZID, currentRule, tzHint)
 				}
 				inTimezone = false
 				return nil
@@ -170,9 +171,14 @@ func transformStream(reader io.Reader, writer io.Writer, tzHint string) error {
 	return nil
 }
 
-func applyMapping(mapping, signatureMapping map[string]string, tzid string, rule tzRule, tzHint string) {
+func applyMapping(mapping, signatureMapping, tzidMapping map[string]string, tzid string, rule tzRule, tzHint string) {
 	if tzHint != "" {
 		mapping[tzid] = tzHint
+		return
+	}
+
+	if iana, ok := tzidMapping[tzid]; ok {
+		mapping[tzid] = iana
 		return
 	}
 

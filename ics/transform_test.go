@@ -27,6 +27,23 @@ func TestTransformRewritesKnownTimezone(t *testing.T) {
 	}
 }
 
+func TestTransformRomanceTimezoneOverride(t *testing.T) {
+	reader := readFixture(t, "romance.ics")
+
+	out, err := Transform(reader, "")
+	if err != nil {
+		t.Fatalf("Transform returned error: %v", err)
+	}
+
+	output := readAll(t, out)
+	if !strings.Contains(output, "DTSTART;TZID=Europe/Berlin:20250115T105000") {
+		t.Fatalf("expected DTSTART to use Europe/Berlin")
+	}
+	if strings.Contains(output, "Romance Standard Time") {
+		t.Fatalf("expected original TZID to be removed")
+	}
+}
+
 func TestTransformTZHintOverridesMapping(t *testing.T) {
 	reader := readFixture(t, "hint.ics")
 

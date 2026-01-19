@@ -41,10 +41,22 @@ var knownSignatures = []tzSignature{
 	},
 }
 
+var knownTZIDOverrides = map[string]string{
+	"Romance Standard Time": "Europe/Berlin",
+}
+
 func knownSignatureMapping() map[string]string {
 	mapping := make(map[string]string, len(knownSignatures))
 	for _, signature := range knownSignatures {
 		mapping[signature.rule.signature()] = signature.iana
+	}
+	return mapping
+}
+
+func knownTZIDMapping() map[string]string {
+	mapping := make(map[string]string, len(knownTZIDOverrides))
+	for tzid, iana := range knownTZIDOverrides {
+		mapping[tzid] = iana
 	}
 	return mapping
 }
