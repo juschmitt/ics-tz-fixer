@@ -6,6 +6,7 @@ import (
 	"io"
 	"sort"
 	"strings"
+	"time"
 )
 
 type tzRule struct {
@@ -46,7 +47,7 @@ func transformStream(reader io.Reader, writer io.Writer, tzHint string) error {
 	scanner.Buffer(make([]byte, 0, 1024), 1024*1024)
 
 	signatureMapping := knownSignatureMapping()
-	tzidMapping := knownTZIDMapping()
+	windowsMapping := knownWindowsZoneMapping()
 	mapping := map[string]string{}
 
 	var (
@@ -91,7 +92,7 @@ func transformStream(reader io.Reader, writer io.Writer, tzHint string) error {
 				return nil
 			case "END:VTIMEZONE":
 				if currentTZID != "" {
-					applyMapping(mapping, signatureMapping, tzidMapping, currentTZID, currentRule, tzHint)
+					applyMapping(mapping, signatureMapping, currentTZID, currentRule, tzHint)
 				}
 				inTimezone = false
 				return nil
@@ -136,7 +137,7 @@ func transformStream(reader io.Reader, writer io.Writer, tzHint string) error {
 			return nil
 		}
 
-		return flushLine(updateLine(line, mapping))
+		return flushLine(updateLine(line, mapping, windowsMapping))
 	}
 
 	for scanner.Scan() {
@@ -171,14 +172,9 @@ func transformStream(reader io.Reader, writer io.Writer, tzHint string) error {
 	return nil
 }
 
-func applyMapping(mapping, signatureMapping, tzidMapping map[string]string, tzid string, rule tzRule, tzHint string) {
+func applyMapping(mapping, signatureMapping map[string]string, tzid string, rule tzRule, tzHint string) {
 	if tzHint != "" {
 		mapping[tzid] = tzHint
-		return
-	}
-
-	if iana, ok := tzidMapping[tzid]; ok {
-		mapping[tzid] = iana
 		return
 	}
 
@@ -203,28 +199,28 @@ func normalizeRRule(rule string) string {
 	return strings.Join(cleaned, ";")
 }
 
-func updateLine(line string, mapping map[string]string) string {
+func updateLine(line string, overrides map[string]string, windowsMapping map[string]string) string {
 	key, value, ok := splitLine(line)
 	if !ok {
 		return line
 	}
 
 	if key == "TZID" {
-		if updated, found := resolveTZID(value, mapping); found {
+		if updated, found := resolveTZID(value, overrides, windowsMapping); found {
 			return "TZID:" + updated
 		}
 		return line
 	}
 
 	if strings.Contains(key, "TZID=") {
-		key = replaceTZIDParam(key, mapping)
+		key = replaceTZIDParam(key, overrides, windowsMapping)
 		return key + ":" + value
 	}
 
 	return line
 }
 
-func replaceTZIDParam(key string, mapping map[string]string) string {
+func replaceTZIDParam(key string, overrides map[string]string, windowsMapping map[string]string) string {
 	parts := strings.Split(key, ";")
 	if len(parts) == 1 {
 		return key
@@ -237,7 +233,7 @@ func replaceTZIDParam(key string, mapping map[string]string) string {
 		}
 
 		value := strings.TrimPrefix(part, "TZID=")
-		if updated, found := resolveTZID(value, mapping); found {
+		if updated, found := resolveTZID(value, overrides, windowsMapping); found {
 			parts[index] = "TZID=" + updated
 		}
 	}
@@ -245,17 +241,40 @@ func replaceTZIDParam(key string, mapping map[string]string) string {
 	return strings.Join(parts, ";")
 }
 
-func resolveTZID(tzid string, mapping map[string]string) (string, bool) {
-	if updated, found := mapping[tzid]; found {
+func resolveTZID(tzid string, overrides map[string]string, windowsMapping map[string]string) (string, bool) {
+	if updated, found := overrides[tzid]; found {
 		return updated, true
 	}
 
 	if strings.HasSuffix(tzid, " Standard Time") {
 		trimmed := strings.TrimSuffix(tzid, " Standard Time")
-		if updated, found := mapping[trimmed]; found {
+		if updated, found := overrides[trimmed]; found {
+			return updated, true
+		}
+	}
+
+	if isValidIANATZID(tzid) {
+		return "", false
+	}
+
+	if updated, found := windowsMapping[tzid]; found {
+		return updated, true
+	}
+
+	if strings.HasSuffix(tzid, " Standard Time") {
+		trimmed := strings.TrimSuffix(tzid, " Standard Time")
+		if updated, found := windowsMapping[trimmed]; found {
 			return updated, true
 		}
 	}
 
 	return "", false
+}
+
+func isValidIANATZID(tzid string) bool {
+	location, err := time.LoadLocation(tzid)
+	if err != nil || location == nil {
+		return false
+	}
+	return true
 }

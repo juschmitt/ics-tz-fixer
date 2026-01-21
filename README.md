@@ -20,8 +20,10 @@ https://<your-vercel-app>.vercel.app/api/calendar?url=<OUTLOOK_ICS_URL>&tz_hint=
 ## Notes
 
 - Only `outlook.office365.com` is allowed as the source host.
+- Windows TZIDs are mapped using the CLDR global (`001`) windowsZones table.
+- CLDR license notice is in `THIRD_PARTY_NOTICES.txt`.
 - If a `VTIMEZONE` signature matches a known IANA zone, the TZID is replaced.
-- If a signature is unknown, the original TZID is left untouched.
+- If no mapping exists, the original TZID is left untouched.
 - `VTIMEZONE` blocks are stripped after normalization.
 - The handler returns `text/calendar` and streams the transformed content.
 
